@@ -1,0 +1,21 @@
+{
+  "name": "modbus-server",
+  "version": "1.0.0",
+  "description": "Modbus TCP Server",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": [
+    "modbus",
+    "server",
+    "tcp"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jsmodbus": "^4.0.6"
+  }
+}
+
