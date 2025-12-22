@@ -423,11 +423,23 @@ modbusServer.on("readDiscreteInputs", function(addr, length, unitID) {
 });
 
 // TCP Server bağlantı eventleri
+let activeConnections = 0;
+
 tcpServer.on("connection", function(socket) {
-    console.log(`Yeni Modbus TCP bağlantısı: ${socket.remoteAddress}:${socket.remotePort}`);
+    activeConnections++;
+    console.log(`\n🔌 Yeni Modbus TCP bağlantısı oluşturuldu!`);
+    console.log(`   📍 IP: ${socket.remoteAddress}:${socket.remotePort}`);
+    console.log(`   📊 Aktif bağlantı sayısı: ${activeConnections}\n`);
     
     socket.on("close", function() {
-        console.log(`Bağlantı kapatıldı: ${socket.remoteAddress}:${socket.remotePort}`);
+        activeConnections--;
+        console.log(`\n🔌 Modbus TCP bağlantısı kapatıldı!`);
+        console.log(`   📍 IP: ${socket.remoteAddress}:${socket.remotePort}`);
+        console.log(`   📊 Aktif bağlantı sayısı: ${activeConnections}\n`);
+    });
+    
+    socket.on("error", function(err) {
+        console.error(`❌ Socket hatası (${socket.remoteAddress}:${socket.remotePort}):`, err);
     });
 });
 
