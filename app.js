@@ -40,6 +40,12 @@ let holdingRegisterValues = {
     double: 0.0         // 701-800 aralığı için
 };
 
+// Client tarafından yazılan adresleri takip et (otomatik güncellemeyi engellemek için)
+const clientWrittenHoldingRegisters = new Set(); // Holding register adresleri
+const clientWrittenCoils = new Set(); // Coil adresleri
+const clientWrittenInputRegisters = new Set(); // Input register adresleri (opsiyonel)
+const clientWrittenDiscreteInputs = new Set(); // Discrete input adresleri (opsiyonel)
+
 // Dokümandaki başlangıç değerleri (limit aşımı olduğunda buraya reset edilir)
 const START_VALUES = {
     int16: -16000,
@@ -199,7 +205,10 @@ function updateHoldingRegisters() {
         holdingRegisterValues.int16++;
     }
     for (let i = 0; i <= 100; i++) {
-        writeInt16(holding, i * 2, holdingRegisterValues.int16 + i);
+        // Client tarafından yazılan adresleri atla
+        if (!clientWrittenHoldingRegisters.has(i)) {
+            writeInt16(holding, i * 2, holdingRegisterValues.int16 + i);
+        }
     }
     
     // 101-200: uint16, her saniye +1
@@ -210,7 +219,10 @@ function updateHoldingRegisters() {
         holdingRegisterValues.uint16++;
     }
     for (let i = 101; i <= 200; i++) {
-        writeUInt16(holding, i * 2, holdingRegisterValues.uint16 + (i - 101));
+        // Client tarafından yazılan adresleri atla
+        if (!clientWrittenHoldingRegisters.has(i)) {
+            writeUInt16(holding, i * 2, holdingRegisterValues.uint16 + (i - 101));
+        }
     }
     
     // 201-300: int32, her saniye +1
@@ -221,9 +233,13 @@ function updateHoldingRegisters() {
         holdingRegisterValues.int32++;
     }
     for (let reg = 201; reg <= 300; reg += 2) {
-        const valueIndex = Math.floor((reg - 201) / 2);
-        const value = holdingRegisterValues.int32 + valueIndex;
-        writeInt32(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her int32 2 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 201) / 2);
+            const value = holdingRegisterValues.int32 + valueIndex;
+            writeInt32(holding, reg * 2, value);
+        }
     }
     
     // 301-400: uint32, her saniye +1
@@ -233,9 +249,13 @@ function updateHoldingRegisters() {
         holdingRegisterValues.uint32++;
     }
     for (let reg = 301; reg <= 400; reg += 2) {
-        const valueIndex = Math.floor((reg - 301) / 2);
-        const value = holdingRegisterValues.uint32 + valueIndex;
-        writeUInt32(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her uint32 2 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 301) / 2);
+            const value = holdingRegisterValues.uint32 + valueIndex;
+            writeUInt32(holding, reg * 2, value);
+        }
     }
     
     // 401-500: float32, her saniye +0.111
@@ -245,9 +265,13 @@ function updateHoldingRegisters() {
         holdingRegisterValues.float16 = START_VALUES.float16;
     }
     for (let reg = 401; reg <= 500; reg += 2) {
-        const valueIndex = Math.floor((reg - 401) / 2);
-        const value = holdingRegisterValues.float16 + valueIndex * 0.111;
-        writeFloat32(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her float32 2 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 401) / 2);
+            const value = holdingRegisterValues.float16 + valueIndex * 0.111;
+            writeFloat32(holding, reg * 2, value);
+        }
     }
     
     // 501-600: float32, her saniye +0.222
@@ -256,9 +280,13 @@ function updateHoldingRegisters() {
         holdingRegisterValues.float32 = START_VALUES.float32;
     }
     for (let reg = 501; reg <= 600; reg += 2) {
-        const valueIndex = Math.floor((reg - 501) / 2);
-        const value = holdingRegisterValues.float32 + valueIndex * 0.222;
-        writeFloat32(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her float32 2 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 501) / 2);
+            const value = holdingRegisterValues.float32 + valueIndex * 0.222;
+            writeFloat32(holding, reg * 2, value);
+        }
     }
     
     // 601-700: float64, her saniye +0.333
@@ -267,9 +295,14 @@ function updateHoldingRegisters() {
         holdingRegisterValues.float64 = START_VALUES.float64;
     }
     for (let reg = 601; reg <= 700; reg += 4) {
-        const valueIndex = Math.floor((reg - 601) / 4);
-        const value = holdingRegisterValues.float64 + valueIndex * 0.333;
-        writeFloat64(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her float64 4 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1) ||
+                         clientWrittenHoldingRegisters.has(reg + 2) || clientWrittenHoldingRegisters.has(reg + 3);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 601) / 4);
+            const value = holdingRegisterValues.float64 + valueIndex * 0.333;
+            writeFloat64(holding, reg * 2, value);
+        }
     }
     
     // 701-800: double, her saniye +0.444
@@ -278,15 +311,41 @@ function updateHoldingRegisters() {
         holdingRegisterValues.double = START_VALUES.double;
     }
     for (let reg = 701; reg <= 800; reg += 8) {
-        const valueIndex = Math.floor((reg - 701) / 8);
-        const value = holdingRegisterValues.double + valueIndex * 0.444;
-        writeFloat64(holding, reg * 2, value);
+        // Client tarafından yazılan adresleri atla (her double 8 register kullanır)
+        const isWritten = clientWrittenHoldingRegisters.has(reg) || clientWrittenHoldingRegisters.has(reg + 1) ||
+                         clientWrittenHoldingRegisters.has(reg + 2) || clientWrittenHoldingRegisters.has(reg + 3) ||
+                         clientWrittenHoldingRegisters.has(reg + 4) || clientWrittenHoldingRegisters.has(reg + 5) ||
+                         clientWrittenHoldingRegisters.has(reg + 6) || clientWrittenHoldingRegisters.has(reg + 7);
+        if (!isWritten) {
+            const valueIndex = Math.floor((reg - 701) / 8);
+            const value = holdingRegisterValues.double + valueIndex * 0.444;
+            writeFloat64(holding, reg * 2, value);
+        }
     }
     
     // 801-900: string sabit, değişmez
+    // Client tarafından yazılan adresleri kontrol et
+    let shouldUpdateString = true;
+    for (let reg = 801; reg <= 900; reg++) {
+        if (clientWrittenHoldingRegisters.has(reg)) {
+            shouldUpdateString = false;
+            break;
+        }
+    }
+    // Eğer client tarafından yazılmadıysa string'i güncelle (zaten sabit, ama yine de kontrol ediyoruz)
     
     // 901-1000: string dinamik, epoch time güncelle
-    updateEpochTimeString();
+    // Client tarafından yazılan adresleri kontrol et
+    let shouldUpdateEpochString = true;
+    for (let reg = 901; reg <= 1000; reg++) {
+        if (clientWrittenHoldingRegisters.has(reg)) {
+            shouldUpdateEpochString = false;
+            break;
+        }
+    }
+    if (shouldUpdateEpochString) {
+        updateEpochTimeString();
+    }
 }
 
 // Coil'leri başlangıç değerleriyle doldur
@@ -322,18 +381,21 @@ function updateCoils() {
     
     // 0-100: toggle (0→1→0→1)
     for (let i = 0; i <= 100; i++) {
-        coilToggleState[i] = coilToggleState[i] === 0 ? 1 : 0;
-        const byteIndex = Math.floor(i / 8);
-        const bitIndex = i % 8;
-        if (coilToggleState[i]) {
-            coil[byteIndex] |= (1 << bitIndex);
-        } else {
-            coil[byteIndex] &= ~(1 << bitIndex);
+        // Client tarafından yazılan coil'leri atla
+        if (!clientWrittenCoils.has(i)) {
+            coilToggleState[i] = coilToggleState[i] === 0 ? 1 : 0;
+            const byteIndex = Math.floor(i / 8);
+            const bitIndex = i % 8;
+            if (coilToggleState[i]) {
+                coil[byteIndex] |= (1 << bitIndex);
+            } else {
+                coil[byteIndex] &= ~(1 << bitIndex);
+            }
         }
     }
     
-    // 101-200: sabit 0, değişmez
-    // 201-300: sabit 1, değişmez
+    // 101-200: sabit 0, değişmez (client yazsa bile otomatik güncelleme yapmıyoruz)
+    // 201-300: sabit 1, değişmez (client yazsa bile otomatik güncelleme yapmıyoruz)
 }
 
 // Discrete Input'ları başlangıç değerleriyle doldur
@@ -369,18 +431,21 @@ function updateDiscreteInputs() {
     
     // 0-100: toggle (0→1→0→1)
     for (let i = 0; i <= 100; i++) {
-        discreteInputToggleState[i] = discreteInputToggleState[i] === 0 ? 1 : 0;
-        const byteIndex = Math.floor(i / 8);
-        const bitIndex = i % 8;
-        if (discreteInputToggleState[i]) {
-            discrete[byteIndex] |= (1 << bitIndex);
-        } else {
-            discrete[byteIndex] &= ~(1 << bitIndex);
+        // Client tarafından yazılan discrete input'ları atla (Modbus protokolünde write yok ama simülasyon için takip ediyoruz)
+        if (!clientWrittenDiscreteInputs.has(i)) {
+            discreteInputToggleState[i] = discreteInputToggleState[i] === 0 ? 1 : 0;
+            const byteIndex = Math.floor(i / 8);
+            const bitIndex = i % 8;
+            if (discreteInputToggleState[i]) {
+                discrete[byteIndex] |= (1 << bitIndex);
+            } else {
+                discrete[byteIndex] &= ~(1 << bitIndex);
+            }
         }
     }
     
-    // 101-200: sabit 0, değişmez
-    // 201-300: sabit 1, değişmez
+    // 101-200: sabit 0, değişmez (client yazsa bile otomatik güncelleme yapmıyoruz)
+    // 201-300: sabit 1, değişmez (client yazsa bile otomatik güncelleme yapmıyoruz)
 }
 
 // Modbus TCP Server event handlers
@@ -388,14 +453,79 @@ modbusServer.on("readHoldingRegisters", function(addr, length, unitID) {
     console.log(`Holding Register okuma: Address=${addr}, Length=${length}, UnitID=${unitID}`);
 });
 
-modbusServer.on("writeSingleRegister", function(addr, value, unitID) {
-    console.log(`Holding Register yazma (Single): Address=${addr}, Value=${value}, UnitID=${unitID}`);
-    // Yazma işleminden sonra otomatik güncelleme devam edecek
+// Write event'leri için doğru parametreleri kullan (request, cb)
+modbusServer.on("preWriteSingleRegister", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[PRE] Holding Register yazma (Single): Address=${addr}, Value=${value}`);
+        // Buffer'a yazılmadan önceki değeri göster
+        const oldValue = holdingBuffer.readUInt16BE(addr * 2);
+        console.log(`[PRE] Buffer'daki eski değer: ${oldValue}`);
+    }
 });
 
-modbusServer.on("writeMultipleRegisters", function(addr, values, unitID) {
-    console.log(`Holding Register yazma (Multiple): Address=${addr}, Values=[${values.join(',')}], UnitID=${unitID}`);
-    // Yazma işleminden sonra otomatik güncelleme devam edecek
+modbusServer.on("writeSingleRegister", function(request, cb) {
+    // Bu event sadece buffer yoksa tetiklenir, bizim buffer'ımız var
+    console.log(`[FALLBACK] Holding Register yazma (Single): Buffer yok, handler çağrıldı`);
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[FALLBACK] Address=${addr}, Value=${value}`);
+        // Manuel olarak buffer'a yaz
+        holdingBuffer.writeUInt16BE(value, addr * 2);
+        clientWrittenHoldingRegisters.add(addr);
+    }
+    // Callback'i çağır
+    if (cb) {
+        const responseBody = { address: request.body.address, value: request.body.value };
+        cb(responseBody);
+    }
+});
+
+modbusServer.on("postWriteSingleRegister", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[POST] Holding Register yazma (Single): Address=${addr}, Value=${value}`);
+        // Buffer'a yazıldıktan sonraki değeri kontrol et
+        const newValue = holdingBuffer.readUInt16BE(addr * 2);
+        console.log(`[POST] Buffer'daki yeni değer: ${newValue}`);
+        // Client tarafından yazılan adresi işaretle (otomatik güncellemeyi engelle)
+        clientWrittenHoldingRegisters.add(addr);
+        console.log(`[POST] Adres ${addr} client tarafından yazıldı olarak işaretlendi`);
+    }
+});
+
+modbusServer.on("preWriteMultipleRegisters", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const quantity = request.body.quantity;
+        console.log(`[PRE] Holding Register yazma (Multiple): Address=${addr}, Quantity=${quantity}`);
+    }
+});
+
+modbusServer.on("writeMultipleRegisters", function(buffer) {
+    // Bu event buffer ile emit ediliyor (satır 243'te görüldüğü gibi)
+    // Buffer güncellendikten SONRA çağrılıyor
+    console.log(`[MIDDLE] Holding Register yazma (Multiple): Buffer güncellendi, buffer uzunluğu: ${buffer.length}`);
+});
+
+modbusServer.on("postWriteMultipleRegisters", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const quantity = request.body.quantity;
+        console.log(`[POST] Holding Register yazma (Multiple): Address=${addr}, Quantity=${quantity}`);
+        // Buffer'daki değerleri kontrol et
+        for (let i = 0; i < quantity; i++) {
+            const regAddr = addr + i;
+            const value = holdingBuffer.readUInt16BE(regAddr * 2);
+            console.log(`[POST] Register ${regAddr} değeri: ${value}`);
+            // Client tarafından yazılan tüm adresleri işaretle
+            clientWrittenHoldingRegisters.add(regAddr);
+        }
+        console.log(`[POST] ${quantity} adres client tarafından yazıldı olarak işaretlendi`);
+    }
 });
 
 modbusServer.on("readInputRegisters", function(addr, length, unitID) {
@@ -406,16 +536,90 @@ modbusServer.on("readCoils", function(addr, length, unitID) {
     console.log(`Coil okuma: Address=${addr}, Length=${length}, UnitID=${unitID}`);
 });
 
-modbusServer.on("writeSingleCoil", function(addr, value, unitID) {
-    console.log(`Coil yazma (Single): Address=${addr}, Value=${value}, UnitID=${unitID}`);
-    // 0-100 aralığındaki coil'ler otomatik toggle olmaya devam edecek
-    // 101-200 ve 201-300 aralıkları sabit kalacak
+modbusServer.on("preWriteSingleCoil", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[PRE] Coil yazma (Single): Address=${addr}, Value=${value}`);
+        // Buffer'a yazılmadan önceki değeri göster
+        const byteIndex = Math.floor(addr / 8);
+        const bitIndex = addr % 8;
+        const oldValue = (coilBuffer[byteIndex] >> bitIndex) & 1;
+        console.log(`[PRE] Buffer'daki eski değer: ${oldValue}`);
+    }
 });
 
-modbusServer.on("writeMultipleCoils", function(addr, values, unitID) {
-    console.log(`Coil yazma (Multiple): Address=${addr}, Values=[${values.join(',')}], UnitID=${unitID}`);
-    // 0-100 aralığındaki coil'ler otomatik toggle olmaya devam edecek
-    // 101-200 ve 201-300 aralıkları sabit kalacak
+modbusServer.on("writeSingleCoil", function(request, cb) {
+    // Bu event sadece buffer yoksa tetiklenir, bizim buffer'ımız var
+    console.log(`[FALLBACK] Coil yazma (Single): Buffer yok, handler çağrıldı`);
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[FALLBACK] Address=${addr}, Value=${value}`);
+        // Manuel olarak buffer'a yaz
+        const byteIndex = Math.floor(addr / 8);
+        const bitIndex = addr % 8;
+        if (value === 0xFF00 || value === true || value === 1) {
+            coilBuffer[byteIndex] |= (1 << bitIndex);
+        } else {
+            coilBuffer[byteIndex] &= ~(1 << bitIndex);
+        }
+        clientWrittenCoils.add(addr);
+    }
+    // Callback'i çağır
+    if (cb) {
+        const responseBody = { address: request.body.address, value: request.body.value };
+        cb(responseBody);
+    }
+});
+
+modbusServer.on("postWriteSingleCoil", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const value = request.body.value;
+        console.log(`[POST] Coil yazma (Single): Address=${addr}, Value=${value}`);
+        // Buffer'a yazıldıktan sonraki değeri kontrol et
+        const byteIndex = Math.floor(addr / 8);
+        const bitIndex = addr % 8;
+        const newValue = (coilBuffer[byteIndex] >> bitIndex) & 1;
+        console.log(`[POST] Buffer'daki yeni değer: ${newValue}`);
+        // Client tarafından yazılan adresi işaretle (otomatik güncellemeyi engelle)
+        clientWrittenCoils.add(addr);
+        console.log(`[POST] Coil ${addr} client tarafından yazıldı olarak işaretlendi`);
+    }
+});
+
+modbusServer.on("preWriteMultipleCoils", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const quantity = request.body.quantity;
+        console.log(`[PRE] Coil yazma (Multiple): Address=${addr}, Quantity=${quantity}`);
+    }
+});
+
+modbusServer.on("writeMultipleCoils", function(buffer, oldStatus) {
+    // Bu event buffer ve eski status ile emit ediliyor (satır 215'te görüldüğü gibi)
+    // Buffer güncellendikten ÖNCE çağrılıyor
+    console.log(`[MIDDLE] Coil yazma (Multiple): Buffer güncelleniyor, buffer uzunluğu: ${buffer.length}`);
+});
+
+modbusServer.on("postWriteMultipleCoils", function(request, cb) {
+    if (request && request.body) {
+        const addr = request.body.address;
+        const quantity = request.body.quantity;
+        console.log(`[POST] Coil yazma (Multiple): Address=${addr}, Quantity=${quantity}`);
+        // Buffer'daki değerleri kontrol et
+        for (let i = 0; i < quantity; i++) {
+            const coilAddr = addr + i;
+            const byteIndex = Math.floor(coilAddr / 8);
+            const bitIndex = coilAddr % 8;
+            const value = (coilBuffer[byteIndex] >> bitIndex) & 1;
+            console.log(`[POST] Coil ${coilAddr} değeri: ${value}`);
+            // Client tarafından yazılan tüm adresleri işaretle
+            clientWrittenCoils.add(coilAddr);
+        }
+        console.log(`[POST] ${quantity} coil client tarafından yazıldı olarak işaretlendi`);
+    }
 });
 
 modbusServer.on("readDiscreteInputs", function(addr, length, unitID) {
